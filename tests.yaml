@@ -1,0 +1,37 @@
+tests:
+  - name: "Non-root User Validation"
+    command: ["whoami"]
+    expected_output: "bun"
+    expected_exit_code: 0
+
+  - name: "Bun Runtime Check"
+    command: ["bun", "--version"]
+    expected_exit_code: 0
+
+  - name: "Java Runtime Check"
+    command: ["java", "-version"]
+    expected_exit_code: 0
+
+  - name: "Git Available"
+    command: ["git", "--version"]
+    expected_exit_code: 0
+
+  - name: "Catatonit Init System"
+    command: ["test", "-x", "/usr/bin/catatonit"]
+    expected_exit_code: 0
+
+  - name: "Entrypoint Script Executable"
+    command: ["test", "-x", "/entrypoint.sh"]
+    expected_exit_code: 0
+
+  - name: "Data Volume Directory Exists"
+    command: ["test", "-d", "/data"]
+    expected_exit_code: 0
+
+  - name: "Server Files Present"
+    command: ["test", "-f", "/opt/server/start.ts"]
+    expected_exit_code: 0
+
+  - name: "Node Modules Installed"
+    command: ["test", "-d", "/opt/server/node_modules"]
+    expected_exit_code: 0

@@ -1,0 +1,128 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard",
+    ":disableRateLimiting",
+    ":semanticCommits",
+    ":timezone(America/Detroit)",
+  ],
+  "dependencyDashboardTitle": "Renovate Dashboard",
+  "suppressNotifications": [
+    "prEditedNotification",
+    "prIgnoreNotification",
+  ],
+  "rebaseWhen": "behind-base-branch",
+  "platformAutomerge": false,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+  },
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    // Auto-merge minor, patch, and digest updates
+    {
+      "description": "Auto-merge minor, patch, and digest updates",
+      "automerge": true,
+      "automergeType": "pr",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "ignoreTests": false,
+    },
+    // Auto-merge trusted GitHub Actions
+    {
+      "description": "Auto-merge trusted GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": [
+        "/^actions\\//",
+        "/^docker\\//",
+      ],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "minimumReleaseAge": "1 minute",
+      "ignoreTests": true,
+    },
+    // Semantic commit types by update type
+    {
+      "matchUpdateTypes": ["major"],
+      "semanticCommitType": "feat",
+      "commitMessagePrefix": "{{semanticCommitType}}({{semanticCommitScope}})!:",
+      "commitMessageExtra": "( {{currentVersion}} -> {{newVersion}} )",
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "semanticCommitType": "feat",
+      "commitMessageExtra": "( {{currentVersion}} -> {{newVersion}} )",
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "semanticCommitType": "fix",
+      "commitMessageExtra": "( {{currentVersion}} -> {{newVersion}} )",
+    },
+    {
+      "matchUpdateTypes": ["digest"],
+      "semanticCommitType": "chore",
+      "commitMessageExtra": "( {{currentDigestShort}} -> {{newDigestShort}} )",
+    },
+    // Semantic commit scopes by datasource
+    {
+      "matchDatasources": ["docker"],
+      "semanticCommitScope": "container",
+      "commitMessageTopic": "image {{depName}}",
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "github-action",
+      "commitMessageTopic": "action {{depName}}",
+    },
+    // Labels
+    {
+      "matchUpdateTypes": ["major"],
+      "labels": ["type/major"],
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "labels": ["type/minor"],
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "labels": ["type/patch"],
+    },
+    {
+      "matchDatasources": ["docker"],
+      "addLabels": ["renovate/container"],
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["renovate/github-action"],
+    },
+    // GitHub Actions groups
+    {
+      "description": "Docker GitHub Actions Group",
+      "groupName": "docker-actions",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": [
+        "docker/login-action",
+        "docker/setup-buildx-action",
+        "docker/bake-action",
+        "docker/metadata-action",
+      ],
+      "group": {
+        "commitMessageTopic": "{{{groupName}}} group",
+      },
+    },
+  ],
+  "customManagers": [
+    // Docker Bake HCL file version tracking
+    {
+      "customType": "regex",
+      "description": "Process renovate annotations in docker-bake.hcl",
+      "managerFilePatterns": ["/docker-bake\\.hcl$/"],
+      "matchStrings": [
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+rangeStrategy=(?<rangeStrategy>\\S+))?\\n(?:.*\\n)*?\\s*default\\s*=\\s*\"(?<currentValue>[^\"]+)\"",
+      ],
+      "datasourceTemplate": "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}",
+    },
+  ],
+}

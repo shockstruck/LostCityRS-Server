@@ -9,7 +9,6 @@ on:
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -23,6 +22,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Get Lowercase Registry Owner
+        id: registry-owner
+        run: echo "lowercase=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
@@ -38,7 +41,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
-          images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE_REGISTRY }}/${{ steps.registry-owner.outputs.lowercase }}/lostcityrs-server
           tags: |
             type=sha,prefix=
             type=ref,event=branch
@@ -46,19 +49,30 @@ jobs:
 
       - name: Build and Push Image
         id: push
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198e362a7d2c83 # v6.18.0
+        uses: docker/bake-action@76cc0fa876eb29ec1b0f70bc8b0968a657c0b398 # v6.5.0
         with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file-tags }}
+            ${{ steps.meta.outputs.bake-file-labels }}
+            ${{ steps.meta.outputs.bake-file-annotations }}
+          set: |
+            image.output=type=image,push=true,compression=zstd
+            image.platform=linux/amd64,linux/arm64
+            image.cache-from=type=gha
+            image.cache-to=type=gha,mode=max
+          targets: image
+          source: .
+
+      - name: Get Image Digest
+        id: digest
+        run: |
+          DIGEST=$(docker buildx imagetools inspect ${{ env.IMAGE_REGISTRY }}/${{ steps.registry-owner.outputs.lowercase }}/lostcityrs-server:latest --format '{{ json . }}' | jq -r '.manifest.digest')
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Generate Artifact Attestation
         uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
-          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ steps.registry-owner.outputs.lowercase }}/lostcityrs-server
+          subject-digest: ${{ steps.digest.outputs.digest }}
           push-to-registry: true

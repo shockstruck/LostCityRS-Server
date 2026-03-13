@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# --- Build stage: install dependencies ---
-FROM oven/bun:1-debian AS build
+ARG BUN_VERSION
+ARG JRE_VERSION
+
+# --- Build stage: install bun dependencies ---
+FROM oven/bun:${BUN_VERSION}-debian AS build
 
 WORKDIR /opt/server
 
@@ -10,31 +13,37 @@ RUN bun install --frozen-lockfile || bun install
 
 COPY . .
 
-# --- Runtime stage: minimal image ---
-FROM oven/bun:1-debian
+# --- Runtime stage ---
+FROM oven/bun:${BUN_VERSION}-debian
+
+ARG VERSION
+ARG JRE_VERSION
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    default-jre-headless \
-    git \
     ca-certificates \
+    catatonit \
+    git \
+    default-jre-headless \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/server
 
-COPY --from=build /opt/server /opt/server
+COPY --from=build --chown=bun:bun /opt/server /opt/server
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
-RUN chown -R bun:bun /opt/server
+RUN mkdir -p /data \
+  && chown -R bun:bun /opt/server /data
 
 USER bun
 
+ENV REV="254"
+
+VOLUME ["/data"]
+
 EXPOSE 8888/tcp
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD ["bash", "-c", "echo > /dev/tcp/localhost/8888 || exit 1"]
 
-LABEL org.opencontainers.image.source="https://github.com/shockstruck/LostCityRS-Server" \
-      org.opencontainers.image.description="LostCityRS RuneScape Server" \
-      org.opencontainers.image.licenses="ISC"
-
-ENTRYPOINT ["bun", "run", "start.ts"]
+ENTRYPOINT ["/usr/bin/catatonit", "--", "/entrypoint.sh"]
