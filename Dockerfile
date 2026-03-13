@@ -1,17 +1,49 @@
-FROM oven/bun:debian
+# syntax=docker/dockerfile:1
 
-RUN apt update \
-  && apt install -y --no-install-recommends default-jdk git ca-certificates bash \
+ARG BUN_VERSION
+ARG JRE_VERSION
+
+# --- Build stage: install bun dependencies ---
+FROM oven/bun:${BUN_VERSION}-debian AS build
+
+WORKDIR /opt/server
+
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile || bun install
+
+COPY . .
+
+# --- Runtime stage ---
+FROM oven/bun:${BUN_VERSION}-debian
+
+ARG VERSION
+ARG JRE_VERSION
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    catatonit \
+    git \
+    default-jre-headless \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/server
-COPY . .
 
-RUN chown -R bun:bun /opt/server
+COPY --from=build --chown=bun:bun /opt/server /opt/server
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
+
+RUN mkdir -p /data \
+  && chown -R bun:bun /opt/server /data
 
 USER bun
 
-RUN bun install
+ENV REV="254"
+
+VOLUME ["/data"]
 
 EXPOSE 8888/tcp
-ENTRYPOINT ["/opt/server/start.sh"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["bash", "-c", "echo > /dev/tcp/localhost/8888 || exit 1"]
+
+ENTRYPOINT ["/usr/bin/catatonit", "--", "/entrypoint.sh"]
