@@ -43,7 +43,5 @@ VOLUME ["/data"]
 
 EXPOSE 8888/tcp
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD ["bash", "-c", "echo > /dev/tcp/localhost/8888 || exit 1"]
 
 ENTRYPOINT ["/usr/bin/catatonit", "--", "/entrypoint.sh"]
