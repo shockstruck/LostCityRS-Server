@@ -15,7 +15,7 @@ variable "BUN_VERSION" {
 
 // renovate: datasource=docker depName=eclipse-temurin versioning=docker
 variable "JRE_VERSION" {
-  default = "21-jre"
+  default = "21.0.10_7-jre"
 }
 
 variable "UPSTREAM_VERSION" {
