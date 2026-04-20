@@ -10,7 +10,7 @@ variable "SOURCE" {
 
 // renovate: datasource=docker depName=oven/bun
 variable "BUN_VERSION" {
-  default = "1.3.10"
+  default = "1.3.13"
 }
 
 // renovate: datasource=docker depName=eclipse-temurin versioning=docker
